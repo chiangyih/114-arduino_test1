@@ -1,0 +1,56 @@
+
+# Include 目錄說明
+# 此目錄用於存放專案的標頭檔（Header Files）
+
+This directory is intended for project header files.
+此目錄專門用於存放專案的標頭檔。
+
+# 什麼是標頭檔？
+# 標頭檔是包含 C 語言宣告和巨集定義的檔案，用於在多個專案原始碼檔案之間共用。
+A header file is a file containing C declarations and macro definitions
+to be shared between several project source files. You request the use of a
+header file in your project source file (C, C++, etc) located in `src` folder
+by including it, with the C preprocessing directive `#include'.
+
+# 使用範例
+# 在 src 資料夾中的專案原始碼檔案（C、C++ 等）中，可以使用 C 前置處理指令 `#include` 來引入標頭檔。
+```src/main.c
+
+#include "header.h"
+
+int main (void)
+{
+ ...
+}
+```
+
+# 標頭檔的優點
+# 引入標頭檔的效果等同於將標頭檔的內容複製到每個需要它的原始碼檔案中。
+# 但這種複製方式既耗時又容易出錯。
+Including a header file produces the same results as copying the header file
+into each source file that needs it. Such copying would be time-consuming
+and error-prone. With a header file, the related declarations appear
+in only one place. If they need to be changed, they can be changed in one
+place, and programs that include the header file will automatically use the
+new version when next recompiled. The header file eliminates the labor of
+finding and changing all the copies as well as the risk that a failure to
+find one copy will result in inconsistencies within a program.
+
+# 使用標頭檔後，相關的宣告只會出現在一個地方。
+# 如果需要修改，只需在一處修改即可，所有引入該標頭檔的程式在下次重新編譯時會自動使用新版本。
+# 標頭檔消除了尋找和修改所有副本的工作量，也避免了因遺漏某個副本而導致程式不一致的風險。
+
+# 命名慣例
+# 在 C 語言中，標頭檔的命名慣例是使用 `.h` 作為副檔名。
+In C, the convention is to give header files names that end with `.h'.
+
+# 更多資訊
+# 閱讀更多關於使用標頭檔的資訊，請參考 GCC 官方文件：
+Read more about using header files in official GCC documentation:
+
+* Include Syntax（引入語法）
+* Include Operation（引入操作）
+* Once-Only Headers（單次引入標頭檔）
+* Computed Includes（計算式引入）
+
+https://gcc.gnu.org/onlinedocs/cpp/Header-Files.html
