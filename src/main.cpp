@@ -504,6 +504,7 @@ void handleKeys() {
           tft.print("Connect to BLE");
           tft.drawFastHLine(0, 17, 160, ST77XX_WHITE);
           
+          // 顯示連線狀態
           tft.setTextSize(2);
           tft.setCursor(20, 40);
           if (bleConnected) {
@@ -514,10 +515,16 @@ void handleKeys() {
             tft.print("Disconnect");
           }
           
+          // 顯示說明文字
           tft.setTextColor(ST77XX_WHITE);
           tft.setTextSize(1);
-          tft.setCursor(10, 80);
-          tft.print("Waiting for PC...");
+          tft.setCursor(5, 70);
+          tft.print("PC send command:");
+          tft.setCursor(5, 82);
+          tft.print("CONNECT or PING");
+          tft.setCursor(5, 94);
+          tft.print("or any data...");
+          
           tft.setCursor(5, 112);
           tft.print("Return:Exit");
           break;
@@ -787,7 +794,31 @@ void updateCountdown() {
 }
 
 // ========== 處理藍牙資料 ==========
+/**
+ * @brief 處理藍牙序列埠接收的資料
+ * 
+ * 支援的命令（FirmwareSpec.md F6）：
+ * - PING：心跳確認
+ * - CONNECT：建立連線
+ * - DISCONNECT：中斷連線
+ * - WRITE <DEC>：寫入 EEPROM
+ * - LOAD <VAL>：更新 CPU Loading 顏色
+ */
 void handleBluetoothData() {
+  // 只要收到任何資料，就視為藍牙已連線（自動偵測連線）
+  if (Serial.available() > 0 && !bleConnected) {
+    bleConnected = true;
+    
+    // 如果在 BLE 選單中，立即更新顯示
+    if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
+      tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
+      tft.setTextColor(ST77XX_GREEN);
+      tft.setTextSize(2);
+      tft.setCursor(20, 40);
+      tft.print("Connected");
+    }
+  }
+  
   while (Serial.available() > 0) {
     char c = Serial.read();
     
