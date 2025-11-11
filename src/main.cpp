@@ -95,6 +95,8 @@ unsigned long lastCountdownTime = 0; // 上次更新時間
 // ===== 藍牙通訊相關 =====
 bool bleConnected = false;          // 藍牙連線狀態
 String receivedData = "";           // 接收的資料緩衝區
+unsigned long lastBleDataTime = 0;  // 最後一次收到藍牙資料的時間
+const unsigned long BLE_TIMEOUT = 5000; // 藍牙逾時時間（5 秒）
 
 // ===== CPU 指示燈相關 =====
 unsigned long lastLedTime = 0;      // 上次 LED 切換時間
@@ -276,7 +278,21 @@ void loop() {
       // 藍牙連線模式：顯示連線狀態
       if (inSubMenu) {
         // F7: 根據 CPU Loading 顯示對應顏色
-        // 這裡可以加入 CPU Loading 顏色顯示邏輯
+        // 檢查藍牙連線逾時（如果已連線但超過 5 秒沒收到資料）
+        if (bleConnected && (millis() - lastBleDataTime > BLE_TIMEOUT)) {
+          bleConnected = false;  // 設定為中斷連線
+          
+          // 更新 TFT 顯示為 Disconnected
+          tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
+          tft.setTextColor(ST77XX_RED);
+          tft.setTextSize(2);
+          tft.setCursor(20, 40);
+          tft.print("Disconnect");
+          
+          // 清除 WS2812 顯示
+          strip.clear();
+          strip.show();
+        }
       }
       break;
       
@@ -806,16 +822,21 @@ void updateCountdown() {
  */
 void handleBluetoothData() {
   // 只要收到任何資料，就視為藍牙已連線（自動偵測連線）
-  if (Serial.available() > 0 && !bleConnected) {
-    bleConnected = true;
+  if (Serial.available() > 0) {
+    // 更新最後收到資料的時間（用於逾時檢測）
+    lastBleDataTime = millis();
     
-    // 如果在 BLE 選單中，立即更新顯示
-    if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
-      tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
-      tft.setTextColor(ST77XX_GREEN);
-      tft.setTextSize(2);
-      tft.setCursor(20, 40);
-      tft.print("Connected");
+    if (!bleConnected) {
+      bleConnected = true;
+      
+      // 如果在 BLE 選單中，立即更新顯示
+      if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
+        tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
+        tft.setTextColor(ST77XX_GREEN);
+        tft.setTextSize(2);
+        tft.setCursor(20, 40);
+        tft.print("Connected");
+      }
     }
   }
   
@@ -848,16 +869,14 @@ void handleBluetoothData() {
         else if (receivedData.startsWith("LOAD ")) {
           int cpuLoad = receivedData.substring(5).toInt();
           
-          // 根據 CPU Loading 百分比顯示不同顏色（FirmwareSpec.md F7）
+          // 根據 CPU Loading 百分比顯示不同顏色（依 Arduino_WS2812_Integration_Guide.md 規範）
           uint32_t color;
-          if (cpuLoad < 25) {
-            color = strip.Color(0, 255, 0);      // 綠色：0-24%
-          } else if (cpuLoad < 50) {
-            color = strip.Color(255, 255, 0);    // 黃色：25-49%
-          } else if (cpuLoad < 75) {
-            color = strip.Color(255, 128, 0);    // 橙色：50-74%
+          if (cpuLoad <= 50) {
+            color = strip.Color(0, 255, 0);      // 綠色：0-50% (正常負載)
+          } else if (cpuLoad <= 84) {
+            color = strip.Color(255, 255, 0);    // 黃色：51-84% (中度負載)
           } else {
-            color = strip.Color(255, 0, 0);      // 紅色：75-100%
+            color = strip.Color(255, 0, 0);      // 紅色：85-100% (高負載)
           }
           
           // 設定所有 WS2812 LED
