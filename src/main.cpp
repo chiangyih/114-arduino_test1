@@ -848,7 +848,8 @@ void handleBluetoothData() {
         // 處理接收到的命令
         receivedData.trim(); // 收到的資料去除空白、換行 等(.trim的屬性是指刪除字串前後的空白字元)
         
-        // 除錯輸出：顯示接收到的藍牙資料
+        // // 除錯輸出：顯示接收到的藍牙資料
+        // Serial.println("Waiting for BLE data...");
         Serial.print("BLE RX: ");
         Serial.println(receivedData);
         
@@ -870,9 +871,14 @@ void handleBluetoothData() {
           }
         }
         // LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
-        else if (receivedData.startsWith("LOAD ")) {
-          int cpuLoad = receivedData.substring(5).toInt();
+        else if (receivedData.startsWith("LOAD")) {
+          // 提取數值：移除 "LOAD" 後 trim 空格再轉換
+          String valueStr = receivedData.substring(4);
+          valueStr.trim();  // 去除前後空格
+          int cpuLoad = valueStr.toInt();
           
+          Serial.print("CPU Load: ");
+          Serial.println(cpuLoad);
           // 根據 CPU Loading 百分比顯示不同顏色（依 Arduino_WS2812_Integration_Guide.md 規範）
           uint32_t color;
           if (cpuLoad <= 50) {
