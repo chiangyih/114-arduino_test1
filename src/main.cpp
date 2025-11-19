@@ -848,6 +848,10 @@ void handleBluetoothData() {
         // 處理接收到的命令
         receivedData.trim(); // 收到的資料去除空白、換行 等(.trim的屬性是指刪除字串前後的空白字元)
         
+        // 除錯輸出：顯示接收到的藍牙資料
+        Serial.print("BLE RX: ");
+        Serial.println(receivedData);
+        
         // WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
         if (receivedData.startsWith("WRITE ")) {
           int value = receivedData.substring(6).toInt();
