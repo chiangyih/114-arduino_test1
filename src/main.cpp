@@ -218,7 +218,7 @@ void setup() {
   setupBluetooth();
   
   // ===== 6. 顯示開機畫面 =====
-  // 顯示「TCIVS」和「C201」文字
+  // 顯示「HHIVS」和「C201」文字
   displayBootScreen();
   
   // 符合 FirmwareSpec.md F2 需求：延遲 2 秒後進入選單
@@ -375,7 +375,7 @@ void displayBootScreen() {
   
   // 第一行：顯示「TCIVS」
   tft.setCursor(25, 35);  // 設定游標位置（置中對齊）
-  tft.print("TCIVS");
+  tft.print("HHIVS");
   
   // 第二行：顯示「C201」
   tft.setTextSize(2);      // 中等字體（2 倍大小）
@@ -515,6 +515,10 @@ void handleKeys() {
       
       // 根據選擇的選單顯示對應畫面
       switch (currentMenu) {
+        case MENU_MAIN:
+          // 主選單狀態：不應該在此處出現，但為了避免編譯警告仍需處理
+          break;
+          
         case MENU_CONNECT_BLE:
           // F6, F7: 顯示藍牙連線畫面
           tft.fillScreen(ST77XX_BLACK);
