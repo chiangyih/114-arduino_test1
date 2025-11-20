@@ -101,6 +101,7 @@ bool countdownFinishAnimation = false; // 倒數完成後的閃爍動畫狀態
 unsigned long countdownFinishLastToggle = 0; // 上次閃爍切換時間
 uint8_t countdownFinishBlinkStep = 0;  // 閃爍步驟計數（6 步 = 3 次閃爍）
 const unsigned long COUNTDOWN_FINISH_INTERVAL = 300; // 閃爍間隔（毫秒）
+bool countdownFirstDisplay = true;    // 倒數計時首次顯示標誌
 
 // ===== 藍牙通訊相關 =====
 bool bleConnected = false;          // 藍牙連線狀態
@@ -548,6 +549,7 @@ void handleKeys() {
           countdownSeconds = 10;      // 起始時間 10 秒
           countdownRunning = true;     // 開始倒數
           countdownPaused = false;     // 非暫停狀態
+          countdownFirstDisplay = true; // 重置首次顯示標誌
           tft.fillScreen(ST77XX_BLACK);
           break;
           
@@ -744,15 +746,31 @@ void updateCountdown() {
   if (lastDisplaySeconds != countdownSeconds) {
     lastDisplaySeconds = countdownSeconds;
     
-    tft.fillScreen(ST77XX_BLACK);
-    tft.setTextColor(ST77XX_WHITE);
-    tft.setTextSize(1);
+    // 第一次顯示時，繪製完整背景和文字
+    if (countdownFirstDisplay) {
+      countdownFirstDisplay = false;
+      tft.fillScreen(ST77XX_BLACK);
+      tft.setTextColor(ST77XX_WHITE);
+      tft.setTextSize(1);
+      
+      // 標題
+      tft.setCursor(40, 5);
+      tft.print("CountDown");
+      
+      // 操作提示
+      tft.setTextColor(ST77XX_CYAN);
+      tft.setTextSize(1);
+      tft.setCursor(5, 100);
+      tft.print("Enter:Pause/Resume");
+      tft.setCursor(5, 112);
+      tft.print("Return:Exit");
+    }
     
-    // 標題
-    tft.setCursor(40, 5);
-    tft.print("CountDown");
+    // 只清除時間顯示區域（Y: 25-70）
+    tft.fillRect(0, 25, 160, 45, ST77XX_BLACK);
     
     // 顯示時間（格式：00:00:10）
+    tft.setTextColor(ST77XX_WHITE);
     tft.setTextSize(3);
     int minutes = countdownSeconds / 60;
     int seconds = countdownSeconds % 60;
@@ -765,7 +783,8 @@ void updateCountdown() {
     if (seconds < 10) tft.print("0");
     tft.print(seconds);
     
-    // 顯示狀態
+    // 顯示狀態（清除舊狀態並重繪）
+    tft.fillRect(0, 75, 160, 15, ST77XX_BLACK);
     tft.setTextSize(1);
     tft.setCursor(50, 75);
     if (countdownPaused) {
@@ -775,14 +794,6 @@ void updateCountdown() {
       tft.setTextColor(ST77XX_GREEN);
       tft.print("RUNNING");
     }
-    
-    // 操作提示
-    tft.setTextColor(ST77XX_CYAN);
-    tft.setTextSize(1);
-    tft.setCursor(5, 100);
-    tft.print("Enter:Pause/Resume");
-    tft.setCursor(5, 112);
-    tft.print("Return:Exit");
   }
   
   // 倒數結束時啟動非阻塞閃爍動畫（根據 FirmwareSpec.md）
