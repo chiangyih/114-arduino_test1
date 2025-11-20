@@ -884,10 +884,20 @@ void handleBluetoothData() {
           // 提取數值：移除 "LOAD" 後 trim 空格再轉換
           String valueStr = receivedData.substring(4);
           valueStr.trim();  // 去除前後空格
+          
+          // 驗證字串是否為純數字
+          bool isNumeric = (valueStr.length() > 0);
+          for (unsigned int i = 0; i < valueStr.length(); i++) {
+            if (!isDigit(valueStr[i])) {
+              isNumeric = false;
+              break;
+            }
+          }
+          
           int cpuLoad = valueStr.toInt();
           
-          // 驗證範圍：CPU Loading 應在 0-100 之間，且字串不為空
-          if (cpuLoad >= 0 && cpuLoad <= 100 && valueStr.length() > 0) {
+          // 驗證範圍：必須是純數字且在 0-100 之間
+          if (isNumeric && cpuLoad >= 0 && cpuLoad <= 100) {
             Serial.print("CPU Load: ");
             Serial.println(cpuLoad);
             
