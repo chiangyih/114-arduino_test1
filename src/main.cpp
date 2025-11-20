@@ -134,6 +134,7 @@ const int KEY_DEBOUNCE = 200;       // 防彈跳時間（毫秒）
 void setupBluetooth();
 void displayBootScreen();
 void displayMainMenu();
+void updateMainMenuItem(int itemIndex, const char* itemText);  // 優化選單刷新
 void displaySubMenu();
 void handleKeys();
 void updateCPULed();
@@ -426,20 +427,36 @@ void displayMainMenu() {
   
   // 逐一繪製選單項目
   for (int i = 0; i < 4; i++) {
-    if (i == menuIndex) {
-      // 選中的項目：藍色背景反白顯示
-      tft.fillRect(0, 22 + i * 20, 160, 18, ST77XX_BLUE);
-      tft.setTextColor(ST77XX_WHITE);
-      tft.setCursor(5, 25 + i * 20);
-      tft.print(">");  // 顯示箭頭指示符號
-    } else {
-      // 未選中的項目：白色文字
-      tft.setTextColor(ST77XX_WHITE);
-    }
-    // 顯示選單項目文字
-    tft.setCursor(15, 25 + i * 20);
-    tft.println(menuItems[i]);
+    updateMainMenuItem(i, menuItems[i]);
   }
+}
+
+// ========== 更新主選單單個項目（優化：只刷新該項目） ==========
+/**
+ * @brief 更新主選單的單個項目顯示
+ * 
+ * 此函式只重繪特定項目，而非整個選單
+ * 用於優化 UP/DOWN 按鍵的回應速度
+ */
+void updateMainMenuItem(int itemIndex, const char* itemText) {
+  const int itemY = 22 + itemIndex * 20;
+  const int itemHeight = 18;
+  
+  if (itemIndex == menuIndex) {
+    // 選中的項目：藍色背景反白顯示
+    tft.fillRect(0, itemY, 160, itemHeight, ST77XX_BLUE);
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setCursor(5, itemY + 3);
+    tft.print(">");  // 顯示箭頭指示符號
+  } else {
+    // 未選中的項目：黑色背景、白色文字
+    tft.fillRect(0, itemY, 160, itemHeight, ST77XX_BLACK);
+    tft.setTextColor(ST77XX_WHITE);
+  }
+  
+  // 顯示選單項目文字
+  tft.setCursor(15, itemY + 3);
+  tft.println(itemText);
 }
 
 // ========== 處理按鍵輸入 ==========
@@ -470,8 +487,18 @@ void handleKeys() {
     
     if (!inSubMenu) {
       // 主選單：向上移動選項（循環選擇）
+      int oldIndex = menuIndex;
       menuIndex = (menuIndex - 1 + 4) % 4;  // 避免負數，確保範圍 0-3
-      displayMainMenu();  // 重新繪製選單
+      
+      // 只刷新改變的兩個項目（舊位置和新位置）
+      const char* menuItems[] = {
+        "1.Connect to BLE",
+        "2.RGB Offline",
+        "3.CountDown",
+        "4.EEPROM"
+      };
+      updateMainMenuItem(oldIndex, menuItems[oldIndex]);
+      updateMainMenuItem(menuIndex, menuItems[menuIndex]);
     } else if (currentMenu == MENU_RGB_OFFLINE) {
       // RGB Offline 子選單：切換上一個顏色模式
       rgbModeIndex = (rgbModeIndex - 1 + 4) % 4;  // 循環選擇 0-3
@@ -484,8 +511,18 @@ void handleKeys() {
     
     if (!inSubMenu) {
       // 主選單：向下移動選項（循環選擇）
+      int oldIndex = menuIndex;
       menuIndex = (menuIndex + 1) % 4;  // 範圍 0-3
-      displayMainMenu();
+      
+      // 只刷新改變的兩個項目（舊位置和新位置）
+      const char* menuItems[] = {
+        "1.Connect to BLE",
+        "2.RGB Offline",
+        "3.CountDown",
+        "4.EEPROM"
+      };
+      updateMainMenuItem(oldIndex, menuItems[oldIndex]);
+      updateMainMenuItem(menuIndex, menuItems[menuIndex]);
     } else if (currentMenu == MENU_RGB_OFFLINE) {
       // RGB Offline 子選單：切換下一個顏色模式
       rgbModeIndex = (rgbModeIndex + 1) % 4;
@@ -742,6 +779,25 @@ void setAllWs2812(uint32_t color) {
   strip.show();
 }
 
+// ========== 檢驗字符串是否為純數字 ==========
+/**
+ * @brief 檢驗字符串是否為純數字
+ * @param str 待驗證的字符串指針
+ * @return true 如果字符串非空且所有字符都是數字
+ */
+bool isNumericString(const char* str) {
+  if (str == NULL || *str == '\0') {
+    return false;  // 空指針或空字符串不符合
+  }
+  
+  for (const char* p = str; *p != '\0'; p++) {
+    if (!isdigit((unsigned char)*p)) {
+      return false;  // 發現非數字字符
+    }
+  }
+  return true;  // 所有字符都是數字
+}
+
 // ========== 更新 BLE 狀態文字 ========== 
 void updateBleStatusText(const char* text, uint16_t color) {
   if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
@@ -919,37 +975,30 @@ void handleBluetoothData() {
           // 提取數值：指向 "LOAD " 後的字符
           char* valuePtr = &receivedData[5];
           
-          // 驗證字串是否為純數字（且至少有一個字符）
-          bool isNumeric = false;
-          if (valuePtr != NULL && *valuePtr != '\0') {
-            isNumeric = true;
-            for (char* p = valuePtr; *p != '\0'; p++) {
-              if (!isdigit((unsigned char)*p)) {
-                isNumeric = false;
-                break;
+          // 使用輔助函式驗證是否為純數字
+          if (isNumericString(valuePtr)) {
+            int cpuLoad = atoi(valuePtr);
+            
+            // 驗證範圍：必須在 0-100 之間
+            if (cpuLoad >= 0 && cpuLoad <= 100) {
+              Serial.print("CPU Load: ");
+              Serial.println(cpuLoad);
+              
+              // 根據 CPU Loading 百分比顯示不同顏色（依 Arduino_WS2812_Integration_Guide.md 規範）
+              uint32_t color;
+              if (cpuLoad <= 50) {
+                color = strip.Color(0, 255, 0);      // 綠色：0-50% (正常負載)
+              } else if (cpuLoad <= 84) {
+                color = strip.Color(255, 255, 0);    // 黃色：51-84% (中度負載)
+              } else {
+                color = strip.Color(255, 0, 0);      // 紅色：85-100% (高負載)
               }
-            }
-          }
-          
-          int cpuLoad = atoi(valuePtr);
-          
-          // 驗證範圍：必須是純數字且在 0-100 之間
-          if (isNumeric && cpuLoad >= 0 && cpuLoad <= 100) {
-            Serial.print("CPU Load: ");
-            Serial.println(cpuLoad);
-            
-            // 根據 CPU Loading 百分比顯示不同顏色（依 Arduino_WS2812_Integration_Guide.md 規範）
-            uint32_t color;
-            if (cpuLoad <= 50) {
-              color = strip.Color(0, 255, 0);      // 綠色：0-50% (正常負載)
-            } else if (cpuLoad <= 84) {
-              color = strip.Color(255, 255, 0);    // 黃色：51-84% (中度負載)
+              
+              setAllWs2812(color);
+              Serial.println("ACK");
             } else {
-              color = strip.Color(255, 0, 0);      // 紅色：85-100% (高負載)
+              Serial.println("ERR");
             }
-            
-            setAllWs2812(color);
-            Serial.println("ACK");
           } else {
             Serial.println("ERR");
           }
