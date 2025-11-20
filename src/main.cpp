@@ -701,8 +701,6 @@ void updateRGBOffline() {
       setWS2812Gradient();
       break;
   }
-  
-  delay(50);
 }
 
 // ========== 設定 WS2812 顏色 ==========
