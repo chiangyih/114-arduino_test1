@@ -546,9 +546,11 @@ void handleKeys() {
           
         case MENU_COUNTDOWN:
           // F4: 倒數計時模式初始化
+          cli();  // 禁用中斷以安全設定倒數變數
           countdownSeconds = 10;      // 起始時間 10 秒
           countdownRunning = true;     // 開始倒數
           countdownPaused = false;     // 非暫停狀態
+          sei();  // 恢復中斷
           countdownFirstDisplay = true; // 重置首次顯示標誌
           tft.fillScreen(ST77XX_BLACK);
           break;
@@ -571,7 +573,9 @@ void handleKeys() {
     if (inSubMenu) {
       // 子選單狀態：返回主選單
       inSubMenu = false;
+      cli();  // 禁用中斷以安全停止倒數
       countdownRunning = false;  // 停止倒數計時
+      sei();  // 恢復中斷
       setAllWs2812(0);           // 清除 WS2812 LED
       displayMainMenu();         // 顯示主選單
     }
@@ -742,9 +746,15 @@ void updateBleStatusText(const char* text, uint16_t color) {
 void updateCountdown() {
   static int lastDisplaySeconds = -1;
   
+  // 安全地讀取 countdownSeconds（禁用中斷以避免 ISR 執行中修改）
+  int safeCountdownSeconds;
+  cli();  // 禁用全域中斷
+  safeCountdownSeconds = countdownSeconds;
+  sei();  // 恢復中斷
+  
   // 只在秒數改變時更新顯示
-  if (lastDisplaySeconds != countdownSeconds) {
-    lastDisplaySeconds = countdownSeconds;
+  if (lastDisplaySeconds != safeCountdownSeconds) {
+    lastDisplaySeconds = safeCountdownSeconds;
     
     // 第一次顯示時，繪製完整背景和文字
     if (countdownFirstDisplay) {
@@ -772,8 +782,8 @@ void updateCountdown() {
     // 顯示時間（格式：00:00:10）
     tft.setTextColor(ST77XX_WHITE);
     tft.setTextSize(3);
-    int minutes = countdownSeconds / 60;
-    int seconds = countdownSeconds % 60;
+    int minutes = safeCountdownSeconds / 60;
+    int seconds = safeCountdownSeconds % 60;
     
     tft.setCursor(20, 35);
     tft.print("00:");
@@ -797,7 +807,7 @@ void updateCountdown() {
   }
   
   // 倒數結束時啟動非阻塞閃爍動畫（根據 FirmwareSpec.md）
-  if (countdownSeconds == 0 && countdownRunning) {
+  if (safeCountdownSeconds == 0 && countdownRunning) {
     countdownRunning = false;
     countdownFinishAnimation = true;
     countdownFinishBlinkStep = 0;
