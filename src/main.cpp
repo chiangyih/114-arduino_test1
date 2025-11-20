@@ -998,9 +998,12 @@ int readEEPROM() {
 // ========== 顯示 EEPROM 數值 ==========
 void displayEEPROMValue() {
   static bool displayUpdated = false;
+  static int lastDisplayValue = -1;  // 追蹤上次顯示的值
   
-  if (!displayUpdated) {
+  // 如果值改變或首次顯示，強制更新
+  if (!displayUpdated || lastDisplayValue != eepromValue) {
     displayUpdated = true;
+    lastDisplayValue = eepromValue;
     
     tft.fillScreen(ST77XX_BLACK);
     tft.setTextColor(ST77XX_CYAN);
@@ -1045,6 +1048,7 @@ void displayEEPROMValue() {
   // 離開選單時重置標記
   if (!inSubMenu) {
     displayUpdated = false;
+    lastDisplayValue = -1;  // 重置比較值
   }
 }
 
