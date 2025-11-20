@@ -942,41 +942,68 @@ void handleBluetoothData() {
         // 確保字符陣列以 null 結尾
         receivedData[receivedDataLen] = '\0';
         
-        // 去除末尾空格
-        while (receivedDataLen > 0 && (receivedData[receivedDataLen - 1] == ' ' || 
-                                       receivedData[receivedDataLen - 1] == '\t')) {
-          receivedData[--receivedDataLen] = '\0';
+        // 去除前導空格
+        size_t start = 0;
+        while (start < receivedDataLen && (receivedData[start] == ' ' || receivedData[start] == '\t')) {
+          start++;
         }
+        
+        // 去除末尾空格
+        while (receivedDataLen > start && (receivedData[receivedDataLen - 1] == ' ' || 
+                                           receivedData[receivedDataLen - 1] == '\t')) {
+          receivedDataLen--;
+        }
+        
+        // 如果有前導空格，移動字符串到開頭
+        if (start > 0 && receivedDataLen > start) {
+          memmove(receivedData, receivedData + start, receivedDataLen - start);
+          receivedDataLen -= start;
+        }
+        receivedData[receivedDataLen] = '\0';
         
         // 除錯輸出：顯示接收到的藍牙資料
         Serial.print("BLE RX: ");
         Serial.println(receivedData);
         
         // WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
-        if (strncmp(receivedData, "WRITE ", 6) == 0 && 
-            isdigit((unsigned char)receivedData[6])) {
-          int value = atoi(&receivedData[6]);  // 提取 "WRITE " 後的數值
+        if (strncmp(receivedData, "WRITE", 5) == 0) {
+          // 跳過 "WRITE" 後的空格，找到數值開始位置
+          char* valuePtr = &receivedData[5];
+          while (*valuePtr == ' ' || *valuePtr == '\t') {
+            valuePtr++;
+          }
           
-          // 根據 FirmwareSpec.md：接受四位二進位數值（由 PC 端轉十進位後傳送）
-          if (value >= 0 && value <= 255) {
-            writeEEPROM(value);
-            Serial.println("ACK");
+          // 檢查是否有數值且第一個字符是數字
+          if (*valuePtr != '\0' && isdigit((unsigned char)*valuePtr)) {
+            int value = atoi(valuePtr);  // 提取數值
             
-            // 更新顯示（如果在 EEPROM 選單中）
-            if (currentMenu == MENU_EEPROM && inSubMenu) {
-              displayEEPROMValue();
+            // 根據 FirmwareSpec.md：接受四位二進位數值（由 PC 端轉十進位後傳送）
+            if (value >= 0 && value <= 255) {
+              writeEEPROM(value);
+              Serial.println("ACK");
+              
+              // 更新顯示（如果在 EEPROM 選單中）
+              if (currentMenu == MENU_EEPROM && inSubMenu) {
+                displayEEPROMValue();
+              }
+            } else {
+              Serial.println("ERR");
             }
           } else {
             Serial.println("ERR");
           }
         }
         // LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
-        else if (strncmp(receivedData, "LOAD ", 5) == 0) {
-          // 提取數值：指向 "LOAD " 後的字符
-          char* valuePtr = &receivedData[5];
+        else if (strncmp(receivedData, "LOAD", 4) == 0) {
+          // 跳過 "LOAD" 後的空格，找到數值開始位置
+          char* valuePtr = &receivedData[4];
+          while (*valuePtr == ' ' || *valuePtr == '\t') {
+            valuePtr++;
+          }
           
-          // 使用輔助函式驗證是否為純數字
-          if (isNumericString(valuePtr)) {
+          // 檢查是否有數值且第一個字符是數字或負號
+          if (*valuePtr != '\0' && (isdigit((unsigned char)*valuePtr) || *valuePtr == '-')) {
+            // 提取數值（atoi 會自動停止在非數字字符處）
             int cpuLoad = atoi(valuePtr);
             
             // 驗證範圍：必須在 0-100 之間
