@@ -87,9 +87,9 @@ int rgbModeIndex = 0;               // RGB 模式索引（0-3）
 bool inSubMenu = false;             // 是否在子選單中
 
 // ===== 倒數計時功能相關 =====
-int countdownSeconds = 10;          // 倒數秒數（起始值 10）
-bool countdownRunning = false;      // 倒數計時是否運行中
-bool countdownPaused = false;       // 倒數計時是否暫停
+volatile int countdownSeconds = 10;          // 倒數秒數（起始值 10）- ISR 中會修改
+volatile bool countdownRunning = false;      // 倒數計時是否運行中
+volatile bool countdownPaused = false;       // 倒數計時是否暫停
 unsigned long lastCountdownTime = 0; // 上次更新時間
 bool countdownFinishAnimation = false; // 倒數完成後的閃爍動畫狀態
 unsigned long countdownFinishLastToggle = 0; // 上次閃爍切換時間
