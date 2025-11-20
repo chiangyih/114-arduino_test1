@@ -79,13 +79,15 @@ python test_ble_connection.py
 
 ### 支援的命令
 
-| 命令 | 格式 | 功能 | 回應 |
-|------|------|------|------|
-| CONNECT | `CONNECT\n` | 建立藍牙連線 | `ACK\n` |
-| DISCONNECT | `DISCONNECT\n` | 中斷藍牙連線 | `ACK\n` |
-| PING | `PING\n` | 心跳確認 | `ACK\n` |
-| LOAD | `LOAD <0-100>\n` | 設定 CPU Loading 顏色 | `ACK\n` |
-| WRITE | `WRITE <0-255>\n` | 寫入 EEPROM | `ACK\n` / `ERR\n` |
+| 命令 | 格式 | 功能 | 回應 | 容錯 |
+|------|------|------|------|------|
+| CONNECT | `CONNECT\n` | 建立藍牙連線 | `ACK\n` | 精確匹配 |
+| DISCONNECT | `DISCONNECT\n` | 中斷藍牙連線 | `ACK\n` | 精確匹配 |
+| PING | `PING\n` | 心跳確認 | `ACK\n` | 精確匹配 |
+| LOAD | `LOAD <0-100>\n` | 設定 CPU Loading 顏色 | `ACK\n` | 寬鬆匹配¹ |
+| WRITE | `WRITE <0-255>\n` | 寫入 EEPROM | `ACK\n` / `ERR\n` | 寬鬆匹配¹ |
+
+¹ **寬鬆匹配**：自動搜尋字串中的數字，容忍多個空格和格式不規範
 
 ### CPU Loading 顏色對應
 - **0-50%**: 綠色 (正常負載)
@@ -96,6 +98,32 @@ python test_ble_connection.py
 - 逾時時間: 5 秒
 - 超過 5 秒未收到資料自動顯示 "Disconnect"
 - TFT 自動更新連線狀態
+
+### 容錯與數據驗證
+
+#### 寬鬆命令解析
+- **LOAD / WRITE**：使用寬鬆匹配
+  - 只需字串包含命令關鍵字
+  - 自動搜尋字串中的數字
+  - 容忍多個空格、亂碼或格式不規範
+- **CONNECT / DISCONNECT / PING**：精確匹配
+
+#### 資料清理流程
+1. **去除前導空格**：移除命令前的所有空格/Tab
+2. **去除末尾空格**：移除命令後的所有空格/Tab
+3. **搜尋數字**：在清理後的字串中找第一個數字
+4. **範圍驗證**：LOAD (0-100)、WRITE (0-255)
+
+#### 容錯範例
+```
+輸入           結果          說明
+LOAD 50        ✅ ACK        標準格式
+LOAD  50       ✅ ACK        多個空格
+LOAD50         ✅ ACK        無空格
+WRITE  123     ✅ ACK        多個空格
+LOAD 150       ❌ ERR        超出範圍
+WRITE 300      ❌ ERR        超出範圍
+```
 
 ---
 

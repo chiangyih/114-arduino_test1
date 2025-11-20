@@ -25,13 +25,18 @@ HC-05 GND →  Arduino GND
 
 ## 支援的命令
 
-| 命令 | 格式 | 功能 | 回應 | 範例 |
-|------|------|------|------|------|
-| CONNECT | `CONNECT` | 建立連線 | `ACK` | `CONNECT` |
-| DISCONNECT | `DISCONNECT` | 中斷連線 | `ACK` | `DISCONNECT` |
-| PING | `PING` | 心跳確認 | `ACK` | `PING` |
-| LOAD | `LOAD <VAL>` | 更新 WS2812 顏色 | `ACK` | `LOAD 65` |
-| WRITE | `WRITE <DEC>` | 寫入 EEPROM | `ACK`/`ERR` | `WRITE 123` |
+| 命令 | 格式 | 功能 | 回應 | 範例 | 容錯 |
+|------|------|------|------|------|------|
+| CONNECT | `CONNECT` | 建立連線 | `ACK` | `CONNECT` | 精確匹配 |
+| DISCONNECT | `DISCONNECT` | 中斷連線 | `ACK` | `DISCONNECT` | 精確匹配 |
+| PING | `PING` | 心跳確認 | `ACK` | `PING` | 精確匹配 |
+| LOAD | `LOAD <VAL>` | 更新 WS2812 顏色 | `ACK` | `LOAD 65` | 寬鬆匹配¹ |
+| WRITE | `WRITE <DEC>` | 寫入 EEPROM | `ACK`/`ERR` | `WRITE 123` | 寬鬆匹配¹ |
+
+¹ **寬鬆匹配**：
+- 只要字串包含命令關鍵字即可識別
+- 自動在字串中搜尋數字
+- 容忍多個空格、亂碼或格式不規範
 
 ---
 
@@ -99,6 +104,30 @@ DISCONNECT
 → 回傳 "ACK"
 ```
 
+### 測試 7：容錯測試（多個空格）
+```
+LOAD   50
+→ WS2812 顯示綠色
+→ 回傳 "ACK"
+```
+
+### 測試 8：容錯測試（無空格）
+```
+LOAD50
+→ WS2812 顯示綠色
+→ 回傳 "ACK"
+```
+
+### 測試 9：邊界值測試
+```
+LOAD 0    → 綠色（0%）
+LOAD 50   → 綠色（50%）
+LOAD 51   → 黃色（51%）
+LOAD 84   → 黃色（84%）
+LOAD 85   → 紅色（85%）
+LOAD 100  → 紅色（100%）
+```
+
 ---
 
 ## 自動化測試
@@ -133,6 +162,23 @@ LOAD 50  （直接發送，無需先 CONNECT）
 → 自動設定為連線狀態
 → TFT 顯示 "Connected"
 → WS2812 顯示綠色
+```
+
+### 寬鬆命令解析
+系統使用改進的命令驗證邏輯：
+- **LOAD / WRITE 命令**：寬鬆匹配
+  - 只要字串包含關鍵字即可識別
+  - 自動在字串中搜尋數字
+  - 容忍多個空格或格式不規範
+- **CONNECT / DISCONNECT / PING**：精確匹配
+  - 完全匹配命令內容
+
+**容錯範例**：
+```
+LOAD  50      （多個空格）→ ✓ 識別為 LOAD 50
+LOAD50        （無空格）→ ✓ 識別為 LOAD 50
+WRITE  123    （多個空格）→ ✓ 識別為 WRITE 123
+LOAD❌LOAD 25  （亂碼混雜）→ ✓ 識別為 LOAD 25
 ```
 
 ### 逾時自動中斷

@@ -136,9 +136,24 @@ ODD-01-BBBB
 ### 通訊內容
 - HC-05 使用 SPP 模式（9600bps）
 - 支援命令：
-  - `WRITE <DEC>` → 寫入 EEPROM
-  - `LOAD <VAL>` → 更新 WS2812 顏色顯示
-  - `PING` / `ACK` → 心跳確認  
+  - `WRITE <DEC>` → 寫入 EEPROM（寬鬆匹配）
+  - `LOAD <VAL>` → 更新 WS2812 顏色顯示（寬鬆匹配）
+  - `PING` / `ACK` → 心跳確認（精確匹配）
+  - `CONNECT` → 建立連線（精確匹配）
+  - `DISCONNECT` → 中斷連線（精確匹配）
+
+### 命令驗證規則（v2.0 改進）
+
+#### 寬鬆匹配命令（LOAD、WRITE）
+- 只需字串包含命令關鍵字
+- 自動在字串中搜尋第一個數字
+- 容忍多個空格、前導/末尾空格
+- 容忍亂碼混雜（例：`LOAD❌RLOAD 25❌LOAD`）
+- 範圍驗證：LOAD (0-100)、WRITE (0-255)
+
+#### 精確匹配命令（CONNECT、DISCONNECT、PING）
+- 完全匹配命令內容
+- 前導/末尾空格會被清除  
 
 ---
 
