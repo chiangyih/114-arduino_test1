@@ -579,6 +579,12 @@ void handleKeys() {
       cli();  // 禁用中斷以安全停止倒數
       countdownRunning = false;  // 停止倒數計時
       sei();  // 恢復中斷
+      
+      // 如果退出倒數計時模式，重置首次顯示標誌以便下次進入時完整初始化
+      if (currentMenu == MENU_COUNTDOWN) {
+        countdownFirstDisplay = true;
+      }
+      
       setAllWs2812(0);           // 清除 WS2812 LED
       displayMainMenu();         // 顯示主選單
     }
