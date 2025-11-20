@@ -966,15 +966,15 @@ void handleBluetoothData() {
         Serial.println(receivedData);
         
         // WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
-        if (strncmp(receivedData, "WRITE", 5) == 0) {
-          // 跳過 "WRITE" 後的空格，找到數值開始位置
-          char* valuePtr = &receivedData[5];
-          while (*valuePtr == ' ' || *valuePtr == '\t') {
+        if (strstr(receivedData, "WRITE") != NULL) {
+          // 在整個字串中搜尋第一個數字
+          char* valuePtr = receivedData;
+          while (*valuePtr != '\0' && !isdigit((unsigned char)*valuePtr)) {
             valuePtr++;
           }
           
-          // 檢查是否有數值且第一個字符是數字
-          if (*valuePtr != '\0' && isdigit((unsigned char)*valuePtr)) {
+          // 如果找到數字，提取並驗證
+          if (*valuePtr != '\0') {
             int value = atoi(valuePtr);  // 提取數值
             
             // 根據 FirmwareSpec.md：接受四位二進位數值（由 PC 端轉十進位後傳送）
@@ -994,15 +994,15 @@ void handleBluetoothData() {
           }
         }
         // LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
-        else if (strncmp(receivedData, "LOAD", 4) == 0) {
-          // 跳過 "LOAD" 後的空格，找到數值開始位置
-          char* valuePtr = &receivedData[4];
-          while (*valuePtr == ' ' || *valuePtr == '\t') {
+        else if (strstr(receivedData, "LOAD") != NULL) {
+          // 在整個字串中搜尋第一個數字（跳過非數字字符）
+          char* valuePtr = receivedData;
+          while (*valuePtr != '\0' && !isdigit((unsigned char)*valuePtr)) {
             valuePtr++;
           }
           
-          // 檢查是否有數值且第一個字符是數字或負號
-          if (*valuePtr != '\0' && (isdigit((unsigned char)*valuePtr) || *valuePtr == '-')) {
+          // 如果找到數字，提取並驗證
+          if (*valuePtr != '\0') {
             // 提取數值（atoi 會自動停止在非數字字符處）
             int cpuLoad = atoi(valuePtr);
             
