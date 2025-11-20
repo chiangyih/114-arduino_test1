@@ -304,8 +304,7 @@ void loop() {
     case MENU_EEPROM:
       // EEPROM 讀取模式：顯示儲存的數值
       if (inSubMenu) {
-        displayEEPROMValue();  // F8: 顯示 EEPROM 內容
-        delay(50);             // 短暫延遲避免過度刷新
+        displayEEPROMValue();  // F8: 顯示 EEPROM 內容（內建防重繪機制）
       }
       break;
 
