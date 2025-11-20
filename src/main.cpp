@@ -105,12 +105,12 @@ const unsigned long COUNTDOWN_FINISH_INTERVAL = 300; // 閃爍間隔（毫秒）
 bool countdownFirstDisplay = true;    // 倒數計時首次顯示標誌
 
 // ===== 藍牙通訊相關 =====
+const size_t BLE_BUFFER_MAX = 64;   // 藍牙命令最大長度（必須在陣列定義前）
 bool bleConnected = false;          // 藍牙連線狀態
 char receivedData[BLE_BUFFER_MAX] = {0};  // 接收的資料緩衝區（使用 C 字符陣列替代 String）
 size_t receivedDataLen = 0;         // 接收資料的長度
 unsigned long lastBleDataTime = 0;  // 最後一次收到藍牙資料的時間
 const unsigned long BLE_TIMEOUT = 5000; // 藍牙逾時時間（5 秒）
-const size_t BLE_BUFFER_MAX = 64;   // 藍牙命令最大長度
 
 // ===== CPU 指示燈相關 =====
 unsigned long lastLedTime = 0;      // 上次 LED 切換時間
