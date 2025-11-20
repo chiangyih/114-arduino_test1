@@ -120,6 +120,9 @@ uint16_t hueValue = 0;              // 漸層色相值（0-65535）
 // ===== EEPROM 資料儲存相關 =====
 int eepromValue = 0;                // EEPROM 儲存的數值
 bool eepromValid = false;           // EEPROM 資料是否有效
+#define EEPROM_SIGNATURE 0xAA       // EEPROM 簽名（驗證初始化）
+#define EEPROM_ADDR_SIGNATURE 1     // 簽名儲存位址
+#define EEPROM_ADDR_VALUE 0         // 數值儲存位址
 
 // ===== 按鍵防彈跳相關 =====
 unsigned long lastKeyTime = 0;      // 上次按鍵觸發時間
@@ -976,10 +979,12 @@ void handleBluetoothData() {
 // ========== EEPROM 寫入 ==========
 // 根據 FirmwareSpec.md：接受四位二進位數值（由 PC 端轉十進位後傳送）
 // 四位二進位範圍：0000-1111 (0-15)，但規格允許更大範圍（0-255）
+// 使用簽名機制驗證 EEPROM 初始化狀態
 void writeEEPROM(int value) {
   // 檢查數值範圍
   if (value >= 0 && value <= 255) {
-    EEPROM.write(0, value);
+    EEPROM.write(EEPROM_ADDR_VALUE, value);      // 寫入數值
+    EEPROM.write(EEPROM_ADDR_SIGNATURE, EEPROM_SIGNATURE);  // 寫入簽名（標記為已初始化）
     eepromValue = value;
     eepromValid = true;
   } else {
@@ -989,15 +994,23 @@ void writeEEPROM(int value) {
 }
 
 // ========== EEPROM 讀取 ==========
-// 從 EEPROM 地址 0 讀取儲存的數值
+// 從 EEPROM 地址讀取儲存的數值
+// 使用簽名驗證 EEPROM 的有效性（確保已初始化）
 int readEEPROM() {
-  int value = EEPROM.read(0);
-  // 驗證讀取的數值
-  if (value >= 0 && value <= 255) {
-    eepromValid = true;
-    return value;
+  int signature = EEPROM.read(EEPROM_ADDR_SIGNATURE);
+  
+  // 檢查簽名是否正確（表示已初始化）
+  if (signature == EEPROM_SIGNATURE) {
+    int value = EEPROM.read(EEPROM_ADDR_VALUE);
+    // 驗證讀取的數值在有效範圍內
+    if (value >= 0 && value <= 255) {
+      eepromValid = true;
+      return value;
+    }
   }
-  // 若讀取失敗，返回 0 並標記為無效
+  
+  // 若簽名不符或讀取失敗，返回 0 並標記為無效
+  // 此時需要用戶從 PC 端傳送 WRITE 命令進行初始化
   eepromValid = false;
   return 0;
 }
