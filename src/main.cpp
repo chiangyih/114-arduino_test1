@@ -28,6 +28,7 @@
 #include <Arduino.h>
 #include <Engnin_comp_2025.h>
 #include <EEPROM.h>
+#include <string.h>  // 用於 strcmp, strncmp, strlen 等 C 字符函式
 
 // ========== 腳位定義 ==========
 #define LED_RED 13        // CPU 運行指示燈（D13）
@@ -105,7 +106,8 @@ bool countdownFirstDisplay = true;    // 倒數計時首次顯示標誌
 
 // ===== 藍牙通訊相關 =====
 bool bleConnected = false;          // 藍牙連線狀態
-String receivedData = "";           // 接收的資料緩衝區
+char receivedData[BLE_BUFFER_MAX] = {0};  // 接收的資料緩衝區（使用 C 字符陣列替代 String）
+size_t receivedDataLen = 0;         // 接收資料的長度
 unsigned long lastBleDataTime = 0;  // 最後一次收到藍牙資料的時間
 const unsigned long BLE_TIMEOUT = 5000; // 藍牙逾時時間（5 秒）
 const size_t BLE_BUFFER_MAX = 64;   // 藍牙命令最大長度
@@ -861,6 +863,8 @@ void updateCountdown() {
  * - DISCONNECT：中斷連線
  * - WRITE <DEC>：寫入 EEPROM
  * - LOAD <VAL>：更新 CPU Loading 顏色
+ * 
+ * 效能優化：使用 C 字符陣列而非 String 物件以減少記憶體碎片化
  */
 void handleBluetoothData() {
   // 只要收到任何資料，就視為藍牙已連線（自動偵測連線）
@@ -870,7 +874,6 @@ void handleBluetoothData() {
     
     if (!bleConnected) {
       bleConnected = true;
-      
       updateBleStatusText("Connected", ST77XX_GREEN);
     }
   }
@@ -879,18 +882,23 @@ void handleBluetoothData() {
     char c = Serial.read();
     
     if (c == '\n' || c == '\r') {
-      if (receivedData.length() > 0) {
-        // 處理接收到的命令
-        receivedData.trim(); // 收到的資料去除空白、換行 等(.trim的屬性是指刪除字串前後的空白字元)
+      if (receivedDataLen > 0) {
+        // 確保字符陣列以 null 結尾
+        receivedData[receivedDataLen] = '\0';
         
-        // // 除錯輸出：顯示接收到的藍牙資料
-        // Serial.println("Waiting for BLE data...");
+        // 去除末尾空格
+        while (receivedDataLen > 0 && (receivedData[receivedDataLen - 1] == ' ' || 
+                                       receivedData[receivedDataLen - 1] == '\t')) {
+          receivedData[--receivedDataLen] = '\0';
+        }
+        
+        // 除錯輸出：顯示接收到的藍牙資料
         Serial.print("BLE RX: ");
         Serial.println(receivedData);
         
         // WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
-        if (receivedData.startsWith("WRITE ")) {
-          int value = receivedData.substring(6).toInt();
+        if (strncmp(receivedData, "WRITE ", 6) == 0) {
+          int value = atoi(&receivedData[6]);  // 提取 "WRITE " 後的數值
           
           // 根據 FirmwareSpec.md：接受四位二進位數值（由 PC 端轉十進位後傳送）
           if (value >= 0 && value <= 255) {
@@ -906,21 +914,23 @@ void handleBluetoothData() {
           }
         }
         // LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
-        else if (receivedData.startsWith("LOAD")) {
-          // 提取數值：移除 "LOAD" 後 trim 空格再轉換
-          String valueStr = receivedData.substring(4);
-          valueStr.trim();  // 去除前後空格
+        else if (strncmp(receivedData, "LOAD", 4) == 0) {
+          // 提取數值：移除 "LOAD" 後的空格並轉換
+          char* valuePtr = &receivedData[4];
+          while (*valuePtr == ' ' || *valuePtr == '\t') {
+            valuePtr++;  // 跳過空格
+          }
           
           // 驗證字串是否為純數字
-          bool isNumeric = (valueStr.length() > 0);
-          for (unsigned int i = 0; i < valueStr.length(); i++) {
-            if (!isDigit(valueStr[i])) {
+          bool isNumeric = (*valuePtr != '\0');  // 至少有一個字符
+          for (char* p = valuePtr; *p != '\0'; p++) {
+            if (!isdigit((unsigned char)*p)) {
               isNumeric = false;
               break;
             }
           }
           
-          int cpuLoad = valueStr.toInt();
+          int cpuLoad = atoi(valuePtr);
           
           // 驗證範圍：必須是純數字且在 0-100 之間
           if (isNumeric && cpuLoad >= 0 && cpuLoad <= 100) {
@@ -938,29 +948,26 @@ void handleBluetoothData() {
             }
             
             setAllWs2812(color);
-            
             Serial.println("ACK");
           } else {
             Serial.println("ERR");
           }
         }
         // PING 命令：心跳確認（格式：PING -> ACK）
-        else if (receivedData == "PING") {
+        else if (strcmp(receivedData, "PING") == 0) {
           bleConnected = true;
           Serial.println("ACK");
         }
         // CONNECT 命令：建立連線
-        else if (receivedData == "CONNECT") {
+        else if (strcmp(receivedData, "CONNECT") == 0) {
           bleConnected = true;
           Serial.println("ACK");
-          
           updateBleStatusText("Connected", ST77XX_GREEN);
         }
         // DISCONNECT 命令：中斷連線
-        else if (receivedData == "DISCONNECT") {
+        else if (strcmp(receivedData, "DISCONNECT") == 0) {
           bleConnected = false;
           Serial.println("ACK");
-          
           updateBleStatusText("Disconnect", ST77XX_RED);
           setAllWs2812(0);
         }
@@ -969,14 +976,16 @@ void handleBluetoothData() {
           Serial.println("ERR");
         }
         
-        receivedData = "";
+        receivedDataLen = 0;  // 重置接收長度
       }
     } else {
-      if (receivedData.length() >= BLE_BUFFER_MAX - 1) {
-        receivedData = "";
+      // 將字符添加到緩衝區（保留空間給 null 結尾）
+      if (receivedDataLen >= BLE_BUFFER_MAX - 1) {
+        // 緩衝區滿，清空並報告錯誤
+        receivedDataLen = 0;
         Serial.println("ERR");
       } else {
-        receivedData += c;
+        receivedData[receivedDataLen++] = c;
       }
     }
   }
