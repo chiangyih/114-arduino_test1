@@ -91,6 +91,10 @@ int countdownSeconds = 10;          // 倒數秒數（起始值 10）
 bool countdownRunning = false;      // 倒數計時是否運行中
 bool countdownPaused = false;       // 倒數計時是否暫停
 unsigned long lastCountdownTime = 0; // 上次更新時間
+bool countdownFinishAnimation = false; // 倒數完成後的閃爍動畫狀態
+unsigned long countdownFinishLastToggle = 0; // 上次閃爍切換時間
+uint8_t countdownFinishBlinkStep = 0;  // 閃爍步驟計數（6 步 = 3 次閃爍）
+const unsigned long COUNTDOWN_FINISH_INTERVAL = 300; // 閃爍間隔（毫秒）
 
 // ===== 藍牙通訊相關 =====
 bool bleConnected = false;          // 藍牙連線狀態
@@ -310,8 +314,7 @@ void loop() {
       break;
   }
   
-  // 主迴圈短暫延遲，降低 CPU 負載
-  delay(10);
+  // 移除阻塞式延遲，確保藍牙接收保持即時
 }
 
 // ========== 藍牙設定函式 ==========
@@ -778,28 +781,12 @@ void updateCountdown() {
     tft.print("Return:Exit");
   }
   
-  // 倒數結束時閃爍粉紅色（根據 FirmwareSpec.md）
+  // 倒數結束時啟動非阻塞閃爍動畫（根據 FirmwareSpec.md）
   if (countdownSeconds == 0 && countdownRunning) {
     countdownRunning = false;
-    
-    // 閃爍三次
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < WS2812_COUNT; j++) {
-        strip.setPixelColor(j, strip.Color(255, 105, 180));  // 粉紅色
-      }
-      strip.show();
-      delay(300);
-      
-      strip.clear();
-      strip.show();
-      delay(300);
-    }
-    
-    // 最後顯示粉紅色（持續顯示）
-    for (int j = 0; j < WS2812_COUNT; j++) {
-      strip.setPixelColor(j, strip.Color(255, 105, 180));
-    }
-    strip.show();
+    countdownFinishAnimation = true;
+    countdownFinishBlinkStep = 0;
+    countdownFinishLastToggle = millis();
     
     // 更新 TFT 顯示完成訊息
     tft.fillRect(0, 75, 160, 20, ST77XX_BLACK);
@@ -807,6 +794,26 @@ void updateCountdown() {
     tft.setTextSize(2);
     tft.setCursor(30, 75);
     tft.print("FINISH!");
+  }
+  
+  if (countdownFinishAnimation) {
+    unsigned long now = millis();
+    if (now - countdownFinishLastToggle >= COUNTDOWN_FINISH_INTERVAL) {
+      countdownFinishLastToggle = now;
+      bool ledOn = (countdownFinishBlinkStep % 2 == 0);
+      for (int j = 0; j < WS2812_COUNT; j++) {
+        strip.setPixelColor(j, ledOn ? strip.Color(255, 105, 180) : 0);
+      }
+      strip.show();
+      countdownFinishBlinkStep++;
+      if (countdownFinishBlinkStep >= 6) {
+        for (int j = 0; j < WS2812_COUNT; j++) {
+          strip.setPixelColor(j, strip.Color(255, 105, 180));
+        }
+        strip.show();
+        countdownFinishAnimation = false;
+      }
+    }
   }
 }
 
