@@ -97,6 +97,7 @@ bool bleConnected = false;          // 藍牙連線狀態
 String receivedData = "";           // 接收的資料緩衝區
 unsigned long lastBleDataTime = 0;  // 最後一次收到藍牙資料的時間
 const unsigned long BLE_TIMEOUT = 5000; // 藍牙逾時時間（5 秒）
+const size_t BLE_BUFFER_MAX = 64;   // 藍牙命令最大長度
 
 // ===== CPU 指示燈相關 =====
 unsigned long lastLedTime = 0;      // 上次 LED 切換時間
@@ -938,7 +939,12 @@ void handleBluetoothData() {
         receivedData = "";
       }
     } else {
-      receivedData += c;
+      if (receivedData.length() >= BLE_BUFFER_MAX - 1) {
+        receivedData = "";
+        Serial.println("ERR");
+      } else {
+        receivedData += c;
+      }
     }
   }
 }
