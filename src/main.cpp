@@ -372,7 +372,7 @@ void displayBootScreen() {
   tft.setTextWrap(false);          // 關閉自動換行
   tft.setTextSize(3);              // 大字體（3 倍大小）
   
-  // 第一行：顯示「TCIVS」
+  // 第一行：顯示「HHIVS」
   tft.setCursor(25, 35);  // 設定游標位置（置中對齊）
   tft.print("HHIVS");
   
