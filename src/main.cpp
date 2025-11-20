@@ -85,6 +85,12 @@ MenuState currentMenu = MENU_MAIN;  // 目前選單狀態
 int menuIndex = 0;                  // 主選單索引（0-3）
 int rgbModeIndex = 0;               // RGB 模式索引（0-3）
 bool inSubMenu = false;             // 是否在子選單中
+const MenuState MENU_ORDER[4] = {
+  MENU_CONNECT_BLE,
+  MENU_RGB_OFFLINE,
+  MENU_COUNTDOWN,
+  MENU_EEPROM
+};
 
 // ===== 倒數計時功能相關 =====
 volatile int countdownSeconds = 10;          // 倒數秒數（起始值 10）- ISR 中會修改
@@ -133,6 +139,8 @@ int readEEPROM();
 void displayEEPROMValue();
 void setWS2812Color(uint32_t color, int numLeds);
 void setWS2812Gradient();
+void setAllWs2812(uint32_t color);
+void updateBleStatusText(const char* text, uint16_t color);
 String getBinaryString(int number);
 
 // ========== Timer1 中斷服務程式（用於倒數計時）==========
@@ -287,16 +295,8 @@ void loop() {
         if (bleConnected && (millis() - lastBleDataTime > BLE_TIMEOUT)) {
           bleConnected = false;  // 設定為中斷連線
           
-          // 更新 TFT 顯示為 Disconnected
-          tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
-          tft.setTextColor(ST77XX_RED);
-          tft.setTextSize(2);
-          tft.setCursor(20, 40);
-          tft.print("Disconnect");
-          
-          // 清除 WS2812 顯示
-          strip.clear();
-          strip.show();
+          updateBleStatusText("Disconnect", ST77XX_RED);
+          setAllWs2812(0);
         }
       }
       break;
@@ -357,7 +357,7 @@ void setupBluetooth() {
  * @brief 顯示開機初始化畫面
  * 
  * FirmwareSpec.md F2 需求：
- * - 第一行顯示「TCIVS」
+ * - 第一行顯示「HHIVS」
  * - 第二行顯示「C201」
  * - 黑色背景，白色文字
  * - 延遲 2 秒後進入主選單
@@ -494,23 +494,8 @@ void handleKeys() {
       // 主選單狀態：進入選中的子選單
       inSubMenu = true;
       
-      // 正確對應 menuIndex 到 MenuState
-      // 修正：直接轉型會造成選單錯亂，需要明確對應
-      // menuIndex: 0=Connect BLE, 1=RGB Offline, 2=CountDown, 3=EEPROM
-      switch (menuIndex) {
-        case 0:
-          currentMenu = MENU_CONNECT_BLE;
-          break;
-        case 1:
-          currentMenu = MENU_RGB_OFFLINE;
-          break;
-        case 2:
-          currentMenu = MENU_COUNTDOWN;
-          break;
-        case 3:
-          currentMenu = MENU_EEPROM;
-          break;
-      }
+      // 透過對應陣列將索引轉換為選單狀態
+      currentMenu = MENU_ORDER[menuIndex];
       
       // 根據選擇的選單顯示對應畫面
       switch (currentMenu) {
@@ -585,8 +570,7 @@ void handleKeys() {
       // 子選單狀態：返回主選單
       inSubMenu = false;
       countdownRunning = false;  // 停止倒數計時
-      strip.clear();             // 清除 WS2812 LED
-      strip.show();
+      setAllWs2812(0);           // 清除 WS2812 LED
       displayMainMenu();         // 顯示主選單
     }
   }
@@ -733,6 +717,25 @@ void setWS2812Gradient() {
   hueValue += 256;  // 緩慢變色
 }
 
+// ========== 設定所有 WS2812 為同一顏色 ==========
+void setAllWs2812(uint32_t color) {
+  for (int i = 0; i < WS2812_COUNT; i++) {
+    strip.setPixelColor(i, color);
+  }
+  strip.show();
+}
+
+// ========== 更新 BLE 狀態文字 ========== 
+void updateBleStatusText(const char* text, uint16_t color) {
+  if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
+    tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
+    tft.setTextColor(color);
+    tft.setTextSize(2);
+    tft.setCursor(20, 40);
+    tft.print(text);
+  }
+}
+
 // ========== 更新倒數計時 ==========
 void updateCountdown() {
   static int lastDisplaySeconds = -1;
@@ -838,14 +841,7 @@ void handleBluetoothData() {
     if (!bleConnected) {
       bleConnected = true;
       
-      // 如果在 BLE 選單中，立即更新顯示
-      if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
-        tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
-        tft.setTextColor(ST77XX_GREEN);
-        tft.setTextSize(2);
-        tft.setCursor(20, 40);
-        tft.print("Connected");
-      }
+      updateBleStatusText("Connected", ST77XX_GREEN);
     }
   }
   
@@ -911,11 +907,7 @@ void handleBluetoothData() {
               color = strip.Color(255, 0, 0);      // 紅色：85-100% (高負載)
             }
             
-            // 設定所有 WS2812 LED
-            for (int i = 0; i < WS2812_COUNT; i++) {
-              strip.setPixelColor(i, color);
-            }
-            strip.show();
+            setAllWs2812(color);
             
             Serial.println("ACK");
           } else {
@@ -932,32 +924,15 @@ void handleBluetoothData() {
           bleConnected = true;
           Serial.println("ACK");
           
-          // 如果在 BLE 選單中，更新顯示
-          if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
-            tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
-            tft.setTextColor(ST77XX_GREEN);
-            tft.setTextSize(2);
-            tft.setCursor(20, 40);
-            tft.print("Connected");
-          }
+          updateBleStatusText("Connected", ST77XX_GREEN);
         }
         // DISCONNECT 命令：中斷連線
         else if (receivedData == "DISCONNECT") {
           bleConnected = false;
           Serial.println("ACK");
           
-          // 如果在 BLE 選單中，更新顯示
-          if (currentMenu == MENU_CONNECT_BLE && inSubMenu) {
-            tft.fillRect(20, 40, 120, 20, ST77XX_BLACK);
-            tft.setTextColor(ST77XX_RED);
-            tft.setTextSize(2);
-            tft.setCursor(20, 40);
-            tft.print("Disconnect");
-          }
-          
-          // 清除 WS2812 顯示
-          strip.clear();
-          strip.show();
+          updateBleStatusText("Disconnect", ST77XX_RED);
+          setAllWs2812(0);
         }
         // 未知命令：回傳錯誤
         else {
