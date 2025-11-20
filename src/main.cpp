@@ -897,7 +897,8 @@ void handleBluetoothData() {
         Serial.println(receivedData);
         
         // WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
-        if (strncmp(receivedData, "WRITE ", 6) == 0) {
+        if (strncmp(receivedData, "WRITE ", 6) == 0 && 
+            isdigit((unsigned char)receivedData[6])) {
           int value = atoi(&receivedData[6]);  // 提取 "WRITE " 後的數值
           
           // 根據 FirmwareSpec.md：接受四位二進位數值（由 PC 端轉十進位後傳送）
@@ -914,19 +915,19 @@ void handleBluetoothData() {
           }
         }
         // LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
-        else if (strncmp(receivedData, "LOAD", 4) == 0) {
-          // 提取數值：移除 "LOAD" 後的空格並轉換
-          char* valuePtr = &receivedData[4];
-          while (*valuePtr == ' ' || *valuePtr == '\t') {
-            valuePtr++;  // 跳過空格
-          }
+        else if (strncmp(receivedData, "LOAD ", 5) == 0) {
+          // 提取數值：指向 "LOAD " 後的字符
+          char* valuePtr = &receivedData[5];
           
-          // 驗證字串是否為純數字
-          bool isNumeric = (*valuePtr != '\0');  // 至少有一個字符
-          for (char* p = valuePtr; *p != '\0'; p++) {
-            if (!isdigit((unsigned char)*p)) {
-              isNumeric = false;
-              break;
+          // 驗證字串是否為純數字（且至少有一個字符）
+          bool isNumeric = false;
+          if (valuePtr != NULL && *valuePtr != '\0') {
+            isNumeric = true;
+            for (char* p = valuePtr; *p != '\0'; p++) {
+              if (!isdigit((unsigned char)*p)) {
+                isNumeric = false;
+                break;
+              }
             }
           }
           
