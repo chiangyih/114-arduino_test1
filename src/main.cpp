@@ -949,6 +949,10 @@ void handleBluetoothData() {
           strip.clear();
           strip.show();
         }
+        // 未知命令：回傳錯誤
+        else {
+          Serial.println("ERR");
+        }
         
         receivedData = "";
       }
