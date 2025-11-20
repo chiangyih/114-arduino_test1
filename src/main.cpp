@@ -889,25 +889,31 @@ void handleBluetoothData() {
           valueStr.trim();  // 去除前後空格
           int cpuLoad = valueStr.toInt();
           
-          Serial.print("CPU Load: ");
-          Serial.println(cpuLoad);
-          // 根據 CPU Loading 百分比顯示不同顏色（依 Arduino_WS2812_Integration_Guide.md 規範）
-          uint32_t color;
-          if (cpuLoad <= 50) {
-            color = strip.Color(0, 255, 0);      // 綠色：0-50% (正常負載)
-          } else if (cpuLoad <= 84) {
-            color = strip.Color(255, 255, 0);    // 黃色：51-84% (中度負載)
+          // 驗證範圍：CPU Loading 應在 0-100 之間，且字串不為空
+          if (cpuLoad >= 0 && cpuLoad <= 100 && valueStr.length() > 0) {
+            Serial.print("CPU Load: ");
+            Serial.println(cpuLoad);
+            
+            // 根據 CPU Loading 百分比顯示不同顏色（依 Arduino_WS2812_Integration_Guide.md 規範）
+            uint32_t color;
+            if (cpuLoad <= 50) {
+              color = strip.Color(0, 255, 0);      // 綠色：0-50% (正常負載)
+            } else if (cpuLoad <= 84) {
+              color = strip.Color(255, 255, 0);    // 黃色：51-84% (中度負載)
+            } else {
+              color = strip.Color(255, 0, 0);      // 紅色：85-100% (高負載)
+            }
+            
+            // 設定所有 WS2812 LED
+            for (int i = 0; i < WS2812_COUNT; i++) {
+              strip.setPixelColor(i, color);
+            }
+            strip.show();
+            
+            Serial.println("ACK");
           } else {
-            color = strip.Color(255, 0, 0);      // 紅色：85-100% (高負載)
+            Serial.println("ERR");
           }
-          
-          // 設定所有 WS2812 LED
-          for (int i = 0; i < WS2812_COUNT; i++) {
-            strip.setPixelColor(i, color);
-          }
-          strip.show();
-          
-          Serial.println("ACK");
         }
         // PING 命令：心跳確認（格式：PING -> ACK）
         else if (receivedData == "PING") {
