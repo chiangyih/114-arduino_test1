@@ -593,9 +593,22 @@ void handleKeys() {
           countdownRunning = true;     // 開始倒數
           countdownPaused = false;     // 非暫停狀態
           sei();  // 恢復中斷
-          countdownFirstDisplay = true; // 重置首次顯示標誌
+          
+          // 繪製完整背景和固定文字（只需繪製一次）
           tft.fillScreen(ST77XX_BLACK);
-          updateCountdown();  // ⭐ 立即首次顯示，無需等待秒數改變
+          tft.setTextColor(ST77XX_WHITE);
+          tft.setTextSize(1);
+          tft.setCursor(40, 5);
+          tft.print("CountDown");
+          
+          // 操作提示
+          tft.setTextColor(ST77XX_CYAN);
+          tft.setCursor(5, 100);
+          tft.print("Enter:Pause/Resume");
+          tft.setCursor(5, 112);
+          tft.print("Return:Exit");
+          
+          countdownFirstDisplay = true; // 設定首次顯示標誌
           break;
           
         case MENU_EEPROM:
@@ -820,29 +833,15 @@ void updateCountdown() {
   safeCountdownSeconds = countdownSeconds;
   sei();  // 恢復中斷
   
+  // 首次進入時強制更新（重置 lastDisplaySeconds）
+  if (countdownFirstDisplay) {
+    countdownFirstDisplay = false;
+    lastDisplaySeconds = -1;  // 強制觸發更新
+  }
+  
   // 只在秒數改變時更新顯示
   if (lastDisplaySeconds != safeCountdownSeconds) {
     lastDisplaySeconds = safeCountdownSeconds;
-    
-    // 第一次顯示時，繪製完整背景和文字
-    if (countdownFirstDisplay) {
-      countdownFirstDisplay = false;
-      tft.fillScreen(ST77XX_BLACK);
-      tft.setTextColor(ST77XX_WHITE);
-      tft.setTextSize(1);
-      
-      // 標題
-      tft.setCursor(40, 5);
-      tft.print("CountDown");
-      
-      // 操作提示
-      tft.setTextColor(ST77XX_CYAN);
-      tft.setTextSize(1);
-      tft.setCursor(5, 100);
-      tft.print("Enter:Pause/Resume");
-      tft.setCursor(5, 112);
-      tft.print("Return:Exit");
-    }
     
     // 只清除時間顯示區域（Y: 25-70）
     tft.fillRect(0, 25, 160, 45, ST77XX_BLACK);
