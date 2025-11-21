@@ -843,22 +843,39 @@ void updateCountdown() {
   if (lastDisplaySeconds != safeCountdownSeconds) {
     lastDisplaySeconds = safeCountdownSeconds;
     
-    // 只清除時間顯示區域（Y: 25-70）
-    tft.fillRect(0, 25, 160, 45, ST77XX_BLACK);
-    
-    // 顯示時間（格式：00:00:10）
-    tft.setTextColor(ST77XX_WHITE);
-    tft.setTextSize(3);
     int minutes = safeCountdownSeconds / 60;
     int seconds = safeCountdownSeconds % 60;
     
-    tft.setCursor(20, 35);
-    tft.print("00:");
-    if (minutes < 10) tft.print("0");
-    tft.print(minutes);
-    tft.print(":");
-    if (seconds < 10) tft.print("0");
-    tft.print(seconds);
+    // 首次顯示或分鐘改變時，繪製完整時間
+    static int lastDisplayMinutes = -1;
+    if (lastDisplayMinutes != minutes || lastDisplaySeconds == -1) {
+      lastDisplayMinutes = minutes;
+      
+      // 清除整個時間顯示區域
+      tft.fillRect(0, 25, 160, 45, ST77XX_BLACK);
+      
+      // 顯示完整時間（格式：00:00:10）
+      tft.setTextColor(ST77XX_WHITE);
+      tft.setTextSize(3);
+      tft.setCursor(20, 35);
+      tft.print("00:");
+      if (minutes < 10) tft.print("0");
+      tft.print(minutes);
+      tft.print(":");
+      if (seconds < 10) tft.print("0");
+      tft.print(seconds);
+    } else {
+      // ⚡ 只更新秒數部分（最後兩位數字）
+      // textSize=3 時每個字符寬約 18px，高約 24px
+      // 秒數位置：X從 110 開始（20 + 5*18），Y從 35 開始
+      tft.fillRect(110, 35, 36, 24, ST77XX_BLACK);  // 清除兩位數字的區域
+      
+      tft.setTextColor(ST77XX_WHITE);
+      tft.setTextSize(3);
+      tft.setCursor(110, 35);
+      if (seconds < 10) tft.print("0");
+      tft.print(seconds);
+    }
     
     // 顯示狀態（清除舊狀態並重繪）
     tft.fillRect(0, 75, 160, 15, ST77XX_BLACK);
