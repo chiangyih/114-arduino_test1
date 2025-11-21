@@ -595,6 +595,7 @@ void handleKeys() {
           sei();  // 恢復中斷
           countdownFirstDisplay = true; // 重置首次顯示標誌
           tft.fillScreen(ST77XX_BLACK);
+          updateCountdown();  // ⭐ 立即首次顯示，無需等待秒數改變
           break;
           
         case MENU_EEPROM:
