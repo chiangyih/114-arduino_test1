@@ -965,7 +965,7 @@ void handleBluetoothData() {
         Serial.print("BLE RX: ");
         Serial.println(receivedData);
         
-        // WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
+        // ********WRITE 命令：寫入 EEPROM（格式：WRITE <DEC>）
         if (strstr(receivedData, "WRITE") != NULL) {
           // 在整個字串中搜尋第一個數字
           char* valuePtr = receivedData;
@@ -981,6 +981,8 @@ void handleBluetoothData() {
             if (value >= 0 && value <= 255) {
               writeEEPROM(value);
               Serial.println("ACK");
+              Serial.print("EEPROM Value Set To: ");
+              Serial.println(value);
               
               // 更新顯示（如果在 EEPROM 選單中）
               if (currentMenu == MENU_EEPROM && inSubMenu) {
@@ -993,7 +995,7 @@ void handleBluetoothData() {
             Serial.println("ERR");
           }
         }
-        // LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
+        // ********LOAD 命令：更新 WS2812 顏色（格式：LOAD <VAL>）
         else if (strstr(receivedData, "LOAD") != NULL) {
           // 在整個字串中搜尋第一個數字（跳過非數字字符）
           char* valuePtr = receivedData;
