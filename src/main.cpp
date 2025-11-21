@@ -848,33 +848,41 @@ void updateCountdown() {
     int minutes = safeCountdownSeconds / 60;
     int seconds = safeCountdownSeconds % 60;
     
+    int hours = minutes / 60;
+    minutes = minutes % 60;
+    
     // 首次顯示或分鐘改變時，繪製完整時間
-    if (lastDisplayMinutes != minutes || lastDisplayMinutes == -1) {
-      lastDisplayMinutes = minutes;
+    if (lastDisplayMinutes != (hours * 60 + minutes) || lastDisplayMinutes == -1) {
+      lastDisplayMinutes = hours * 60 + minutes;
       
       // 清除整個時間顯示區域
       tft.fillRect(0, 25, 160, 45, ST77XX_BLACK);
       
-      // 顯示完整時間（格式：00:00:10）
+      // 顯示完整時間（格式：HH:MM:SS）
       tft.setTextColor(ST77XX_WHITE);
       tft.setTextSize(3);
-      tft.setCursor(20, 35);
-      // 計算完整字串並一次顯示
+      tft.setCursor(10, 35);
+      // 小時
+      if (hours < 10) tft.print("0");
+      tft.print(hours);
+      tft.print(":");
+      // 分鐘
       if (minutes < 10) tft.print("0");
       tft.print(minutes);
       tft.print(":");
+      // 秒數
       if (seconds < 10) tft.print("0");
       tft.print(seconds);
     } else {
       // ⚡ 只更新秒數部分（最後兩位數字）
       // textSize=3 時每個字符寬約 18px，高約 24px
-      // 完整時間 "MM:SS" 的顯示位置從 X=20 開始
-      // 秒數位置 = 20 + 2*18(分鐘) + 18(冒號) = 74
-      tft.fillRect(74, 35, 36, 24, ST77XX_BLACK);  // 清除兩位數字的區域
+      // 完整時間 "HH:MM:SS" 的顯示位置從 X=10 開始
+      // 秒數位置 = 10 + 2*18(時) + 18(冒號) + 2*18(分) + 18(冒號) = 118
+      tft.fillRect(118, 35, 36, 24, ST77XX_BLACK);  // 清除兩位數字的區域
       
       tft.setTextColor(ST77XX_WHITE);
       tft.setTextSize(3);
-      tft.setCursor(74, 35);
+      tft.setCursor(118, 35);
       if (seconds < 10) tft.print("0");
       tft.print(seconds);
     }
