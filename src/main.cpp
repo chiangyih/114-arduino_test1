@@ -868,13 +868,13 @@ void updateCountdown() {
     } else {
       // ⚡ 只更新秒數部分（最後兩位數字）
       // textSize=3 時每個字符寬約 18px，高約 24px
-      // 完整時間 "00:00:10" 的顯示位置從 X=20 開始
-      // 秒數部分從第 7 個字符開始：20 + 3*18(分鐘) + 18(冒號) = 92
-      tft.fillRect(92, 35, 36, 24, ST77XX_BLACK);  // 清除兩位數字的區域
+      // 完整時間 "MM:SS" 的顯示位置從 X=20 開始
+      // 秒數位置 = 20 + 2*18(分鐘) + 18(冒號) = 74
+      tft.fillRect(74, 35, 36, 24, ST77XX_BLACK);  // 清除兩位數字的區域
       
       tft.setTextColor(ST77XX_WHITE);
       tft.setTextSize(3);
-      tft.setCursor(92, 35);
+      tft.setCursor(74, 35);
       if (seconds < 10) tft.print("0");
       tft.print(seconds);
     }
