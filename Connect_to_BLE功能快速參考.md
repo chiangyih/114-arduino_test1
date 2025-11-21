@@ -153,10 +153,52 @@ python test_ble_connection.py
 
 ## 特殊功能
 
-### 自動連線偵測
-無需手動發送 CONNECT，只要收到任何資料就自動連線。
+### 測試 11：WRITE 命令標準格式
+```
+WRITE 123
+→ EEPROM 儲存 123（地址 0）
+→ EEPROM 儲存簽名 0xAA（地址 1）
+→ 回傳 "ACK"
+```
 
-**範例**：
+### 測試 12：WRITE 命令邊界值
+```
+WRITE 0        ✅ ACK（最小值）
+WRITE 255      ✅ ACK（最大值）
+WRITE 256      ❌ ERR（超出範圍）
+WRITE 300      ❌ ERR（超出範圍）
+```
+
+### 測試 13：WRITE 命令容錯格式
+```
+WRITE  123     ✅ ACK（多空格）
+WRITE123       ✅ ACK（無空格）
+ WRITE 123     ✅ ACK（前導空格）
+WRITE 123      ✅ ACK（末尾空格）
+WRITE❌WRITE 23 ✅ ACK（亂碼恢復，提取 23）
+```
+
+### 測試 14：EEPROM 讀取驗證
+```
+步驟 1：WRITE 200
+       → 回傳 ACK
+       → EEPROM 儲存 200
+
+步驟 2：在主選單選擇「EEPROM」
+       → 顯示 Stored Value: 200（綠色）
+       → 表示簽名驗證成功（0xAA）
+
+步驟 3：WRITE 50
+       → 回傳 ACK
+       → EEPROM 儲存 50
+
+步驟 4：再次查看 EEPROM 選單
+       → 顯示 Stored Value: 50（已更新）
+```
+
+---
+
+## 💾 EEPROM 簽名機制（v2.0 改進）
 ```
 LOAD 50  （直接發送，無需先 CONNECT）
 → 自動設定為連線狀態
